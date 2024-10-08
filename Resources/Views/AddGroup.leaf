@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f22e2e">
+    <title>#(name)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        main {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background: linear-gradient(135deg, #f22e2e, rgb(235, 98, 40));
+            color: white;
+            height: 100vh;
+            padding: 5%;
+        }
+        .button {
+            padding-top: 15px;
+            padding-bottom: 15px;
+            background-color: rgba(0, 132, 255, 0.5);
+            width: 200px;
+            border: #83c0eb solid 2px;
+            border-radius: 20px;
+            color: #83c0eb;
+        }
+        .button-container {
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="flex justify-center ">
+            <div id="content" class="text-center">
+                <h1 class="text-5xl font-semibold py-3">SharedQ</h1>
+                <hr class="py-3"/>
+                <h2 class="text-3xl font-semibold">Almost there!</h2>
+                <p class="font-medium">You're almost ready to add #(name)! Press "Start Listening" to open SharedQ and add the group!</p>
+                <a href="sharedq:///#(id)/#(urlID)" class="font-semibold">
+                    <div class="button-container flex justify-center">
+                        <div class="button">
+                            Start Listening!
+                        </div>
+                    </div>
+                </a>
+                
+            </div>
+        </div>
+    </main>
+</body>
+</html>
