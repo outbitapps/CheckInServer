@@ -8,6 +8,7 @@ import Foundation
 import Vapor
 import JWT
 import Fluent
+import Turf
 
 class FamilyRoutes: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
@@ -92,7 +93,11 @@ class FamilyRoutes: RouteCollection {
                     if try await family.$currentSession.get(on: req.db) == nil {
                         if let body = req.body.data {
                             let session = try JSONDecoder().decode(CISession.self, from: body)
-                            let sessionModel = CISessionModel(id: session.id, host: try user.requireID(), latitude: session.latitude, longitude: session.longitude, batteryLevel: session.batteryLevel, destinationLat: session.destinationLat, destinationLong: session.destinationLong, family: try family.requireID())
+                            
+                            let origin = LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))
+                            let destination = LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong))
+                            let distance = origin.distance(to: destination)
+                            let sessionModel = CISessionModel(id: session.id, host: try user.requireID(), latitude: session.latitude, longitude: session.longitude, batteryLevel: session.batteryLevel, destinationLat: session.destinationLat, destinationLong: session.destinationLong, family: try family.requireID(), radius: session.radius, distance: distance)
 //                            try await sessionModel.create(on: req.db)
                             
                             try await family.$currentSession.create(sessionModel, on: req.db)
@@ -119,11 +124,26 @@ class FamilyRoutes: RouteCollection {
                 
                 if let sessionModel = try await family.$currentSession.get(on: req.db), try await sessionModel.$host.get(on: req.db).id == user.id {
                     if let body = req.body.data, let session = try? JSONDecoder().decode(CISession.self, from: body) {
+                        let origin = LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))
+                        let destination = LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong))
+                        let distance = origin.distance(to: destination)
                         sessionModel.batteryLevel = session.batteryLevel
                         sessionModel.destinationLat = session.destinationLat
                         sessionModel.destinationLong = session.destinationLong
                         sessionModel.latitude = session.latitude
                         sessionModel.longitude = session.longitude
+                        sessionModel.distance = distance
+                        if (sessionModel.distance - session.distance <= -20) {
+                            sessionModel.noProgressInstances = sessionModel.noProgressInstances + 1
+                            print("\(session.host.username) losing progress")
+                        } else {
+                            sessionModel.noProgressInstances = 0
+                            print("\(session.host.username) making progress")
+                        }
+                        if (sessionModel.noProgressInstances > 3) {
+                            //notify
+                            print("\(session.host.username) no progress \(sessionModel.noProgressInstances) times. notifying")
+                        }
                         try await sessionModel.update(on: req.db)
                         return HTTPStatus.accepted
                     } else {

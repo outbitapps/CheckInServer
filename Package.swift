@@ -16,6 +16,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent-sqlite-driver.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/leaf.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/jwt", from: "4.2.2"),
+        .package(url: "https://github.com/mapbox/turf-swift.git", from: "3.0.0")
     ],
     targets: [
         .executableTarget(
@@ -26,6 +27,7 @@ let package = Package(
                 .product(name: "Fluent", package: "fluent"),
                 .product(name: "Leaf", package: "leaf"),
                 .product(name: "JWT", package: "jwt"),
+                .product(name: "Turf", package: "turf-swift")
             ],
             resources: [
                 .copy("version.json")
