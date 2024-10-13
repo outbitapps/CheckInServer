@@ -91,6 +91,59 @@ final class Token: Model {
         self.expiresAt = expiresAt
     }
 }
+
+final class FamilyJoinToken: Model {
+    static let schema: String = "familytokens"
+    
+    @ID
+    var id: UUID?
+    
+    @Parent(key: "family_id")
+    var family: CIFamilyModel
+    
+    @Field(key: "value")
+    var value: String
+    
+    @Field(key: "expires_at")
+    var expiresAt: Date?
+    
+    @Timestamp(key: "created_at", on: .create)
+    var createdAt: Date?
+    init() {}
+    init(id: UUID? = nil, family: CIFamilyModel.IDValue, value: String, expiresAt: Date? = nil) {
+        self.id = id
+        self.$family.id = family
+        self.value = value
+        self.expiresAt = expiresAt
+    }
+}
+
+extension CIFamilyModel {
+    func createJoinURL() async throws -> URL {
+        let calendar = Calendar(identifier: .gregorian)
+        let expiryDate = calendar.date(byAdding: .hour, value: 24, to: Date())
+        let token = FamilyJoinToken(family: try requireID(), value: [UInt8].random(count: 16).base64.replacingOccurrences(of: "/", with: "-"), expiresAt: expiryDate)
+        try await token.save(on: app.db)
+        return URL(string: "http://\(app.http.server.configuration.hostname):3001/family/join/\(token.value)")!
+    }
+}
+
+struct CreateFamilyJoinToken: Migration {
+    func prepare(on database: any Database) -> EventLoopFuture<Void> {
+        database.schema(FamilyJoinToken.schema)
+            .field("id", .uuid, .identifier(auto: true))
+            .field("family_id", .uuid, .references(CIFamilyModel.schema, "id"))
+            .field("value", .string,.required)
+            .unique(on: "value")
+            .field("created_at", .datetime, .required)
+            .field("expires_at", .datetime)
+            .create()
+    }
+    func revert(on database: any Database) -> EventLoopFuture<Void> {
+        database.schema(FamilyJoinToken.schema).delete()
+    }
+}
+
 struct CreateTokens: Migration {
     func prepare(on database: any Database) -> EventLoopFuture<Void> {
         database.schema(Token.schema)

@@ -29,6 +29,7 @@ class UserRoutes: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
         let usersRoute = routes.grouped("users")
         usersRoute.post("signup") { req in
+            
             let signup = try JSONDecoder().decode(UserSignup.self, from: req.body.data!)
             if signup.email.isEmpty || signup.password.isEmpty || signup.username.contains(" ") {
                 throw Abort(.notAcceptable)
@@ -54,7 +55,7 @@ class UserRoutes: RouteCollection {
                     try await token.save(on: req.db)
                     let apikey = "mlsn.d7c79076b637842c37990cd29836d81970f9a8788894b6f9629038a51180a5dd"
                     let requestBody: [String: Any] = [
-                        "from": ["email": "noreply@ob.paytondev.cloud"],
+                        "from": ["email": "noreply@paytondev.cloud"],
                         "to": [["email": user.email]],
                         "personalization": [["email": user.email, "data": ["resetURL": "http://\(app.http.server.configuration.hostname):8080/users/reset-password/\(token.value)"]]],
                         "template_id":"jy7zpl9m3x3g5vx6",
@@ -81,7 +82,7 @@ class UserRoutes: RouteCollection {
             }
         }
         usersRoute.get("reset-password", ":token") { req async throws in
-            return try await req.view.render("PasswordReset", ["token": req.parameters.get("token") ?? "its_fucked", "hostname":"\(app.http.server.configuration.hostname)"])
+            return try await req.view.render("PasswordReset", ["token": req.parameters.get("token") ?? "u_suck", "hostname":"\(app.http.server.configuration.hostname)"])
         }
         usersRoute.post("pwresetrequest", ":token") { req async throws -> HTTPStatus in
             if let token = req.parameters.get("token"), let authorization = req.headers.basicAuthorization?.password {
@@ -138,6 +139,12 @@ class UserRoutes: RouteCollection {
         }
         tokenProtected.get("validate-token") { req in
             return try await req.auth.require(OBUserModel.self).asOBUser(database: req.db)
+        }
+        tokenProtected.post("pushtoken", ":token") { req async throws -> HTTPStatus in
+            let user = try req.auth.require(OBUserModel.self)
+            user.apnsToken = req.parameters.get("token")
+            try await user.update(on: req.db)
+            return HTTPStatus.accepted
         }
     }
     
