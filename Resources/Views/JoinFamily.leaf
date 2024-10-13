@@ -36,11 +36,11 @@
                 <h1 class="text-5xl font-semibold py-3">Check In</h1>
                 <hr class="py-3"/>
                 <h2 class="text-3xl font-semibold">Almost there!</h2>
-                <p class="font-medium">You're almost ready to add #(name)! Press "Start Listening" to open SharedQ and add the group!</p>
-                <a href="sharedq:///#(id)/#(urlID)" class="font-semibold">
+                <p class="font-medium">You're almost ready to join "#(name)!"</p>
+                <a href="checkinapp:///#(token)" class="font-semibold">
                     <div class="button-container flex justify-center">
                         <div class="button">
-                            Start Listening!
+                            Join Group
                         </div>
                     </div>
                 </a>
@@ -50,3 +50,4 @@
     </main>
 </body>
 </html>
+

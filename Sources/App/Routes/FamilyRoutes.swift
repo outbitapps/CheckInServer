@@ -8,10 +8,22 @@ import Foundation
 import Vapor
 import JWT
 import Fluent
+import MapboxDirections
+import Polyline
 import Turf
+
 
 class FamilyRoutes: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
+        routes.grouped("family").get("join", ":token") { req async throws -> View in
+            if let uuid = req.parameters.get("token"), let token = try await FamilyJoinToken.query(on: req.db).filter(\FamilyJoinToken.$value == uuid).first() {
+                let name = try await token.$family.get(on: req.db).name
+                return try await req.view.render("JoinFamily", ["name": name, "token": uuid])
+            } else {
+                throw Abort(.badRequest)
+            }
+            
+        }
         let familyRoutes = routes.grouped("family").grouped(Token.authenticator())
         familyRoutes.post("create") { req async throws -> HTTPStatus in
             let user = try req.auth.require(OBUserModel.self)
@@ -50,18 +62,25 @@ class FamilyRoutes: RouteCollection {
                 throw Abort(.badRequest, reason: "No or incorrect family ID")
             }
         }
+        
         familyRoutes.post("join", ":token") { req async throws -> HTTPStatus in
             var user = try req.auth.require(OBUserModel.self)
             if let tokenValue = req.parameters.get("token") {
                 var tokens = try await FamilyJoinToken.query(on: req.db).filter(\FamilyJoinToken.$value == tokenValue).all()
                 if tokens.count > 0 {
                     var token = tokens[0]
-                    token.family.usersIDs.append(try user.requireID())
-                    try await token.family.update(on: req.db)
-                    user.familyIDs.append(try token.family.requireID())
-                    try await user.update(on: req.db)
-                    try await token.delete(on: req.db)
-                    return HTTPStatus(statusCode: 200)
+                    print(try? user.requireID())
+                    var family = try await token.$family.get(on: req.db)
+                    if (!family.usersIDs.contains(try user.requireID())) {
+                        family.usersIDs.append(try user.requireID())
+                        try await family.update(on: req.db)
+                        user.familyIDs.append(try token.family.requireID())
+                        try await user.update(on: req.db)
+                        try await token.delete(on: req.db)
+                        return HTTPStatus(statusCode: 200)
+                    } else {
+                        throw Abort(.conflict)
+                    }
                 } else {
                     throw Abort(.notFound, reason: "Link invalid")
                 }
@@ -96,8 +115,31 @@ class FamilyRoutes: RouteCollection {
                             
                             let origin = LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))
                             let destination = LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong))
-                            let distance = origin.distance(to: destination)
-                            let sessionModel = CISessionModel(id: session.id, host: try user.requireID(), latitude: session.latitude, longitude: session.longitude, batteryLevel: session.batteryLevel, destinationLat: session.destinationLat, destinationLong: session.destinationLong, family: try family.requireID(), radius: session.radius, distance: distance)
+//                            let distance = origin.distance(to: destination)
+                            let waypoints = [
+                                Waypoint(coordinate: LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))),
+                                Waypoint(coordinate: LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong)))
+                            ]
+                            let options = RouteOptions(waypoints: waypoints, profileIdentifier: .automobile)
+                            let routeResponse: RouteResponse? = await withCheckedContinuation { cont in
+                                directions.calculate(options) { (session, result) in
+                                    switch result {
+                                    case .failure(let err):
+                                        print("error with directions \(err)")
+                                        cont.resume(returning: nil)
+                                    case .success(let res):
+                                        cont.resume(returning: res)
+                                    }
+                                }
+                            }
+                            var distance = 0.0
+                            if let routeResponse, let route = routeResponse.routes?[0] {
+                                distance = route.distance
+                            } else {
+                                distance = origin.distance(to: destination)
+                            }
+                            print(routeResponse?.routes?.first?.distance)
+                            let sessionModel = CISessionModel(id: session.id, host: try user.requireID(), latitude: session.latitude, longitude: session.longitude, batteryLevel: session.batteryLevel, destinationLat: session.destinationLat, destinationLong: session.destinationLong, family: try family.requireID(), radius: session.radius, distance: routeResponse?.routes?.first?.distance ?? 0.0)
 //                            try await sessionModel.create(on: req.db)
                             
                             try await family.$currentSession.create(sessionModel, on: req.db)
@@ -126,12 +168,35 @@ class FamilyRoutes: RouteCollection {
                     if let body = req.body.data, let session = try? JSONDecoder().decode(CISession.self, from: body) {
                         let origin = LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))
                         let destination = LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong))
-                        let distance = origin.distance(to: destination)
+                        let waypoints = [
+                            Waypoint(coordinate: LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))),
+                            Waypoint(coordinate: LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong)))
+                        ]
+                        let options = RouteOptions(waypoints: waypoints, profileIdentifier: .automobile)
+                        let routeResponse: RouteResponse? = await withCheckedContinuation { cont in
+                            directions.calculate(options) { (session, result) in
+                                switch result {
+                                case .failure(let err):
+                                    print("error with directions \(err)")
+                                    cont.resume(returning: nil)
+                                case .success(let res):
+                                    cont.resume(returning: res)
+                                }
+                            }
+                        }
+                        var distance = 0.0
+                        if let routeResponse, let route = routeResponse.routes?[0] {
+                            distance = route.distance
+                        } else {
+                            distance = origin.distance(to: destination)
+                        }
+//                        let distance = origin.distance(to: destination)
                         sessionModel.batteryLevel = session.batteryLevel
                         sessionModel.destinationLat = session.destinationLat
                         sessionModel.destinationLong = session.destinationLong
                         sessionModel.latitude = session.latitude
                         sessionModel.longitude = session.longitude
+                        print(routeResponse?.routes?.first?.distance)
                         sessionModel.distance = distance
                         if (sessionModel.distance - session.distance <= -20) {
                             sessionModel.noProgressInstances = sessionModel.noProgressInstances + 1
