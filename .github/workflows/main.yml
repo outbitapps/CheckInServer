@@ -1,0 +1,74 @@
+name: Deploy to Linode, Build Swift Project, and Serve App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Install SSH Client (if not pre-installed)
+      - name: Install SSH Client
+        run: sudo apt-get install -y openssh-client
+
+      # Copy repository to Linode using SCP
+      - name: Copy repo to Linode
+        env:
+          LINODE_HOST: ${{ secrets.LINODE_HOST }}
+          LINODE_SSH_USER: ${{ secrets.LINODE_SSH_USER }}
+          LINODE_SSH_PRIVATE_KEY: ${{ secrets.LINODE_SSH_PRIVATE_KEY }}
+        run: |
+          # Create SSH key file
+          echo "${LINODE_SSH_PRIVATE_KEY}" > linode_key
+          chmod 600 linode_key
+
+          # Copy repository to Linode
+          scp -i linode_key -r . "${LINODE_SSH_USER}@${LINODE_HOST}:~/repo"
+
+      # SSH into Linode, kill the existing process, build the project, and deploy the Swift app
+      - name: SSH into Linode, kill existing app, build, and deploy the Swift app
+        env:
+          LINODE_HOST: ${{ secrets.LINODE_HOST }}
+          LINODE_SSH_USER: ${{ secrets.LINODE_SSH_USER }}
+          LINODE_SSH_PRIVATE_KEY: ${{ secrets.LINODE_SSH_PRIVATE_KEY }}
+        run: |
+          # SSH into the Linode machine
+          ssh -i linode_key "${LINODE_SSH_USER}@${LINODE_HOST}" << 'EOF'
+            # Find and kill any process running on port 80
+            if lsof -i:80 -t > /dev/null; then
+              kill -9 $(lsof -i:80 -t)
+            fi
+
+            # Navigate to the repository directory
+            cd ~/repo
+
+            # Build the Swift project
+            swift build
+
+            # Create directory for the CheckInServer if it doesn't exist
+            mkdir -p ~/CheckInServer/
+
+            # Move the build output to CheckInServer
+            mv .build/debug/App ~/CheckInServer/App
+
+            # Navigate to CheckInServer and run the application
+            cd ~/CheckInServer
+            nohup ./App serve --hostname check.paytondev.cloud &
+          EOF
+
+      # Clean up the private key
+      - name: Clean up
+        run: rm linode_key
+
+      # Make a request to the server and print the results
+      - name: Make request to /server-version
+        run: |
+          sleep 10  # Wait for the server to start
+          curl http://check.paytondev.cloud/server-version
