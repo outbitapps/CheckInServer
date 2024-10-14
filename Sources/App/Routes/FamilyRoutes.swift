@@ -117,12 +117,12 @@ class FamilyRoutes: RouteCollection {
                         if let body = req.body.data {
                             let session = try JSONDecoder().decode(CISession.self, from: body)
                             
-                            let origin = LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))
-                            let destination = LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong))
+                            let origin = Turf.LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))
+                            let destination = Turf.LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong))
 //                            let distance = origin.distance(to: destination)
                             let waypoints = [
-                                Waypoint(coordinate: LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))),
-                                Waypoint(coordinate: LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong)))
+                                Waypoint(coordinate: Turf.LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))),
+                                Waypoint(coordinate: Turf.LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong)))
                             ]
                             let options = RouteOptions(waypoints: waypoints, profileIdentifier: .automobile)
                             let routeResponse: RouteResponse? = await withCheckedContinuation { cont in
@@ -174,11 +174,11 @@ class FamilyRoutes: RouteCollection {
                 
                 if let sessionModel = try await family.$currentSession.get(on: req.db), try await sessionModel.$host.get(on: req.db).id == user.id {
                     if let body = req.body.data, let session = try? JSONDecoder().decode(CISession.self, from: body) {
-                        let origin = LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))
-                        let destination = LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong))
+                        let origin = Turf.LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))
+                        let destination = Turf.LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong))
                         let waypoints = [
-                            Waypoint(coordinate: LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))),
-                            Waypoint(coordinate: LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong)))
+                            Waypoint(coordinate: Turf.LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))),
+                            Waypoint(coordinate: Turf.LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong)))
                         ]
                         let options = RouteOptions(waypoints: waypoints, profileIdentifier: .automobile)
                         let routeResponse: RouteResponse? = await withCheckedContinuation { cont in
