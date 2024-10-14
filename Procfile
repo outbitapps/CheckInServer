@@ -1,1 +1,1 @@
-web: Run serve --env production --hostname check.paytondev.cloud
+web: ./App run serve --env production --hostname check.paytondev.cloud
