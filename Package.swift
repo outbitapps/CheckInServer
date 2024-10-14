@@ -17,7 +17,8 @@ let package = Package(
         .package(url: "https://github.com/vapor/leaf.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/jwt", from: "4.2.2"),
         .package(url: "https://github.com/mapbox/mapbox-directions-swift.git", from: "2.14.0"),
-        .package(url: "https://github.com/mapbox/turf-swift.git", from: "2.8.0")
+        .package(url: "https://github.com/mapbox/turf-swift.git", from: "2.8.0"),
+        .package(url: "https://github.com/MihaelIsaev/FCM.git", from: "2.13.0")
     ],
     targets: [
         .executableTarget(
@@ -29,7 +30,8 @@ let package = Package(
                 .product(name: "Leaf", package: "leaf"),
                 .product(name: "JWT", package: "jwt"),
                 .product(name: "MapboxDirections", package: "mapbox-directions-swift"),
-                .product(name: "Turf", package: "turf-swift")
+                .product(name: "Turf", package: "turf-swift"),
+                .product(name: "FCM", package: "FCM")
             ],
             resources: [
                 .copy("version.json")

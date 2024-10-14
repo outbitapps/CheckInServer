@@ -2,6 +2,7 @@ import Fluent
 import FluentSQLiteDriver
 import Leaf
 import Vapor
+import FCM
 // configures your application
 public func configure(_ app: Application) async throws {
     // uncomment to serve files from /Public folder
@@ -19,6 +20,7 @@ public func configure(_ app: Application) async throws {
     app.migrations.add(CreateTokens())
     app.migrations.add(CreatePasswordTokens())
     app.migrations.add(CreateCISession())
+    app.fcm.configuration = .envServiceAccountKey
     try app.register(collection: UserRoutes())
     try app.register(collection: FamilyRoutes())
     app.views.use(.leaf)

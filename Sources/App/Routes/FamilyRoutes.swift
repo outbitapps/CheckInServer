@@ -11,7 +11,7 @@ import Fluent
 import MapboxDirections
 import Polyline
 import Turf
-
+import FCM
 
 class FamilyRoutes: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
@@ -77,6 +77,10 @@ class FamilyRoutes: RouteCollection {
                         user.familyIDs.append(try token.family.requireID())
                         try await user.update(on: req.db)
                         try await token.delete(on: req.db)
+                        let notification = FCMNotification(title: "New member", body: "\(user.username) just joined \(family.name)!")
+                        for user in try await getUsers(family, db: req.db) {
+                            try? await PushManager.sendNotificationToUser(notification, user)
+                        }
                         return HTTPStatus(statusCode: 200)
                     } else {
                         throw Abort(.conflict)
@@ -144,6 +148,10 @@ class FamilyRoutes: RouteCollection {
                             
                             try await family.$currentSession.create(sessionModel, on: req.db)
                             try await family.update(on: req.db)
+                            let notification = FCMNotification(title: "\(user.username)'s Check In", body: "\(user.username) started a Check In in \(family.name)")
+                            for user in try await getUsers(family, db: req.db) {
+                                try? await PushManager.sendNotificationToUser(notification, user)
+                            }
                             print("Making session")
                             return HTTPStatus(statusCode: 200)
                         } else {
@@ -198,16 +206,33 @@ class FamilyRoutes: RouteCollection {
                         sessionModel.longitude = session.longitude
                         print(routeResponse?.routes?.first?.distance)
                         sessionModel.distance = distance
-                        if (sessionModel.distance - session.distance <= -20) {
+                        if (distance - sessionModel.radius <= 0) {
+                            //end session
+                            try await sessionModel.delete(on: req.db)
+                            let notification = FCMNotification(title: "\(sessionModel.host.username)'s Check In", body: "\(sessionModel.host.username) has reached their destination. The Check In has ended.")
+                            for user in try await getUsers(family, db: req.db) {
+                                do {
+                                    try await PushManager.sendNotificationToUser(notification, user)
+                                } catch  {
+                                    print(error)
+                                }
+                            }
+                            return HTTPStatus.ok
+                        }
+                        if (sessionModel.distance - session.distance <= 0) {
                             sessionModel.noProgressInstances = sessionModel.noProgressInstances + 1
                             print("\(session.host.username) losing progress")
                         } else {
                             sessionModel.noProgressInstances = 0
                             print("\(session.host.username) making progress")
                         }
-                        if (sessionModel.noProgressInstances > 3) {
+                        if (sessionModel.noProgressInstances > 5) {
                             //notify
                             print("\(session.host.username) no progress \(sessionModel.noProgressInstances) times. notifying")
+                            let notification = FCMNotification(title: "\(session.host.username)'s Check In", body: "\(session.host.username) has not made any progress toward their destination.")
+                            for user in try await getUsers(family, db: req.db) {
+                                try? await PushManager.sendNotificationToUser(notification, user)
+                            }
                         }
                         try await sessionModel.update(on: req.db)
                         return HTTPStatus.accepted
@@ -226,8 +251,13 @@ class FamilyRoutes: RouteCollection {
             if let familyID = uuid(req.parameters.get("familyID")), let family = try await CIFamilyModel.query(on: req.db).filter(\CIFamilyModel.$id == familyID).first(), try user.hasAccessToFamily(family: family), try user.hasAccessToFamily(family: family) {
                 try await family.$currentSession.load(on: req.db)
                 if let sessionModel = family.currentSession, try await sessionModel.$host.get(on: req.db).id == user.id {
+                    let notification = FCMNotification(title: "\(sessionModel.host.username)'s Check In", body: "\(sessionModel.host.username) has ended their Check In.")
+                    for user in try await getUsers(family, db: req.db) {
+                        try? await PushManager.sendNotificationToUser(notification, user)
+                    }
                     try await sessionModel.delete(on: req.db)
                     try await family.update(on: req.db)
+                   
                     return HTTPStatus(statusCode: 200)
                 } else {
                     throw Abort(.forbidden, reason: "User does not have permission to update this session")
@@ -255,3 +285,13 @@ extension OBUserModel {
 }
 
 
+func getUsers(_ family: CIFamilyModel, db: Database = app.db) async throws -> [OBUserModel] {
+    var users = [OBUserModel]()
+    for userID in family.usersIDs {
+        let user = try await OBUserModel.query(on: db).filter(\OBUserModel.$id == userID).first()
+        if let user {
+            users.append(user)
+        }
+    }
+    return users
+}

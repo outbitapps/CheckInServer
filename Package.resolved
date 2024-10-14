@@ -28,6 +28,15 @@
       }
     },
     {
+      "identity" : "fcm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/MihaelIsaev/FCM.git",
+      "state" : {
+        "revision" : "e80bb2550ae2b6ea33d521943d81de859002144b",
+        "version" : "2.13.1"
+      }
+    },
+    {
       "identity" : "fluent",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/vapor/fluent.git",

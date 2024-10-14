@@ -120,6 +120,7 @@ class UserRoutes: RouteCollection {
         }
         let passwordProtected = usersRoute.grouped(OBUserModel.authenticator())
         passwordProtected.put("login") { req in
+            
             print(req.headers.basicAuthorization)
             let user = try req.auth.require(OBUserModel.self)
             if user.authProvider == .emailAndPassword {
@@ -133,11 +134,8 @@ class UserRoutes: RouteCollection {
             }
         }
         let tokenProtected = usersRoute.grouped(Token.authenticator())
-        tokenProtected.get("fetch-user") { req in
+        tokenProtected.get("get") { req in
             print("fetch users req")
-            return try await req.auth.require(OBUserModel.self).asOBUser(database: req.db)
-        }
-        tokenProtected.get("validate-token") { req in
             return try await req.auth.require(OBUserModel.self).asOBUser(database: req.db)
         }
         tokenProtected.post("pushtoken", ":token") { req async throws -> HTTPStatus in
