@@ -102,10 +102,10 @@
     {
       "identity" : "mapbox-directions-swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/mapbox/mapbox-directions-swift.git",
+      "location" : "https://github.com/paytontech/mapbox-directions-swift.git",
       "state" : {
-        "revision" : "6512320ee7f0091a4c55abe2bc6414f078da88c8",
-        "version" : "2.14.0"
+        "branch" : "main",
+        "revision" : "2d52042a4fd4d3debb21eb2effe5e060b2538eea"
       }
     },
     {

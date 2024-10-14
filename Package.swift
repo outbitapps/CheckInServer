@@ -16,7 +16,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent-sqlite-driver.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/leaf.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/jwt", from: "4.2.2"),
-        .package(url: "https://github.com/mapbox/mapbox-directions-swift.git", from: "2.14.0"),
+        .package(url: "https://github.com/paytontech/mapbox-directions-swift.git", branch: "main"),
         .package(url: "https://github.com/mapbox/turf-swift.git", from: "2.8.0"),
         .package(url: "https://github.com/MihaelIsaev/FCM.git", from: "2.13.0")
     ],
