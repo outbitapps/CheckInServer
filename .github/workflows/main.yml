@@ -18,6 +18,13 @@ jobs:
       - name: Install SSH Client
         run: sudo apt-get install -y openssh-client
 
+      # Add Linode server to known_hosts to avoid "Host key verification failed"
+      - name: Add Linode to known_hosts
+        env:
+          LINODE_HOST: ${{ secrets.LINODE_HOST }}
+        run: |
+          ssh-keyscan $LINODE_HOST >> ~/.ssh/known_hosts
+
       # Copy repository to Linode using SCP
       - name: Copy repo to Linode
         env:
