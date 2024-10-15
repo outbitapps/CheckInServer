@@ -211,7 +211,8 @@ class FamilyRoutes: RouteCollection {
                             await sendNotificationToUsers(notification: notification, channel: "ciended_dest", users: try await getUsers(family, db: req.db), exclude: try await sessionModel.$host.get(on: req.db))
                             return HTTPStatus.ok
                         }
-                        if (sessionModel.distance - session.distance <= 0) {
+                        print("distance \(session.distance - distance) \(distance) \(session.distance)")
+                        if (session.distance - distance <= -100) {
                             sessionModel.noProgressInstances = sessionModel.noProgressInstances + 1
                             print("\(session.host.username) losing progress")
                         } else {
