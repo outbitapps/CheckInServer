@@ -8,9 +8,12 @@
 import Foundation
 import FCM
 class PushManager {
-    static func sendNotificationToUser(_ notification: FCMNotification, _ user: OBUserModel) async throws {
+    static func sendNotificationToUser(_ notification: FCMNotification, notificationChannel: String? = nil, _ user: OBUserModel) async throws {
         if let token = user.apnsToken {
-            let message = FCMMessage(token: token, notification: notification)
+            var message = FCMMessage(token: token, notification: notification)
+            if let notificationChannel {
+                message.android = FCMAndroidConfig(notification: FCMAndroidNotification(channel_id: notificationChannel))
+            }
             _ = app.fcm.send(message)
             print("sent notification to \(user.username)")
         } else {

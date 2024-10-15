@@ -149,7 +149,7 @@ class FamilyRoutes: RouteCollection {
                             try await family.$currentSession.create(sessionModel, on: req.db)
                             try await family.update(on: req.db)
                             let notification = FCMNotification(title: "\(user.username)'s Check In", body: "\(user.username) started a Check In in \(family.name)")
-                            await sendNotificationToUsers(notification: notification, users: try await getUsers(family, db: req.db), exclude: try await sessionModel.$host.get(on: req.db))
+                            await sendNotificationToUsers(notification: notification, channel: "cistarted", users: try await getUsers(family, db: req.db), exclude: try await sessionModel.$host.get(on: req.db))
                             print("Making session")
                             return HTTPStatus(statusCode: 200)
                         } else {
@@ -208,7 +208,7 @@ class FamilyRoutes: RouteCollection {
                             //end session
                             try await sessionModel.delete(on: req.db)
                             let notification = FCMNotification(title: "\(sessionModel.host.username)'s Check In", body: "\(sessionModel.host.username) has reached their destination. The Check In has ended.")
-                            await sendNotificationToUsers(notification: notification, users: try await getUsers(family, db: req.db), exclude: try await sessionModel.$host.get(on: req.db))
+                            await sendNotificationToUsers(notification: notification, channel: "ciended_dest", users: try await getUsers(family, db: req.db), exclude: try await sessionModel.$host.get(on: req.db))
                             return HTTPStatus.ok
                         }
                         if (sessionModel.distance - session.distance <= 0) {
@@ -222,9 +222,7 @@ class FamilyRoutes: RouteCollection {
                             //notify
                             print("\(session.host.username) no progress \(sessionModel.noProgressInstances) times. notifying")
                             let notification = FCMNotification(title: "\(session.host.username)'s Check In", body: "\(session.host.username) has not made any progress toward their destination.")
-                            for user in try await getUsers(family, db: req.db) {
-                                try? await PushManager.sendNotificationToUser(notification, user)
-                            }
+                            await sendNotificationToUsers(notification: notification, channel: "cinoprogress", users: try await getUsers(family, db: req.db), exclude: try await sessionModel.$host.get(on: req.db))
                         }
                         try await sessionModel.update(on: req.db)
                         return HTTPStatus.accepted
@@ -244,7 +242,7 @@ class FamilyRoutes: RouteCollection {
                 try await family.$currentSession.load(on: req.db)
                 if let sessionModel = family.currentSession, try await sessionModel.$host.get(on: req.db).id == user.id {
                     let notification = FCMNotification(title: "\(sessionModel.host.username)'s Check In", body: "\(sessionModel.host.username) has ended their Check In.")
-                    await sendNotificationToUsers(notification: notification, users: try await getUsers(family, db: req.db), exclude: try await sessionModel.$host.get(on: req.db))
+                    await sendNotificationToUsers(notification: notification, channel: "ciended", users: try await getUsers(family, db: req.db), exclude: try await sessionModel.$host.get(on: req.db))
                     try await sessionModel.delete(on: req.db)
                     try await family.update(on: req.db)
                    
@@ -286,7 +284,7 @@ func getUsers(_ family: CIFamilyModel, db: Database = app.db) async throws -> [O
     return users
 }
 
-func sendNotificationToUsers(notification: FCMNotification, users: [OBUserModel], exclude: OBUserModel?) async {
+func sendNotificationToUsers(notification: FCMNotification, channel: String, users: [OBUserModel], exclude: OBUserModel?) async {
     for user in users {
         var sendToUser = true
         if let exclude {
@@ -295,7 +293,7 @@ func sendNotificationToUsers(notification: FCMNotification, users: [OBUserModel]
             }
         }
         if sendToUser {
-            try? await PushManager.sendNotificationToUser(notification, user)
+            try? await PushManager.sendNotificationToUser(notification, notificationChannel: channel, user)
         }
     }
 }
