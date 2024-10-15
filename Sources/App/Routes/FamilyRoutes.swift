@@ -215,6 +215,7 @@ class FamilyRoutes: RouteCollection {
                         if (session.distance - distance <= -100) {
                             sessionModel.noProgressInstances = sessionModel.noProgressInstances + 1
                             print("\(session.host.username) losing progress")
+                            
                         } else {
                             sessionModel.noProgressInstances = 0
                             print("\(session.host.username) making progress")
@@ -224,6 +225,7 @@ class FamilyRoutes: RouteCollection {
                             print("\(session.host.username) no progress \(sessionModel.noProgressInstances) times. notifying")
                             let notification = FCMNotification(title: "\(session.host.username)'s Check In", body: "\(session.host.username) has not made any progress toward their destination.")
                             await sendNotificationToUsers(notification: notification, channel: "cinoprogress", users: try await getUsers(family, db: req.db), exclude: try await sessionModel.$host.get(on: req.db))
+                            sessionModel.noProgressInstances = 0
                         }
                         try await sessionModel.update(on: req.db)
                         return HTTPStatus.accepted
