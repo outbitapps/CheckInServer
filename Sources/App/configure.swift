@@ -3,6 +3,8 @@ import FluentSQLiteDriver
 import Leaf
 import Vapor
 import FCM
+
+var hostname = Environment.get("domain")
 // configures your application
 public func configure(_ app: Application) async throws {
     // uncomment to serve files from /Public folder

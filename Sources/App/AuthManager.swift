@@ -124,7 +124,7 @@ extension CIFamilyModel {
         let expiryDate = calendar.date(byAdding: .hour, value: 24, to: Date())
         let token = FamilyJoinToken(family: try requireID(), value: [UInt8].random(count: 16).base64.replacingOccurrences(of: "/", with: "-"), expiresAt: expiryDate)
         try await token.save(on: app.db)
-        return URL(string: "http://check.paytondev.me/family/join/\(token.value)")!
+        return URL(string: "http://\(hostname)/family/join/\(token.value)")!
     }
 }
 

@@ -101,7 +101,7 @@ class UserRoutes: RouteCollection {
                     let requestBody: [String: Any] = [
                         "from": ["email": "noreply@paytondev.cloud"],
                         "to": [["email": user.email]],
-                        "personalization": [["email": user.email, "data": ["resetURL": "http:/check.paytondev.me/users/reset-password/\(token.value)"]]],
+                        "personalization": [["email": user.email, "data": ["resetURL": "http:/\(hostname)/users/reset-password/\(token.value)"]]],
                         "template_id":"jy7zpl9m3x3g5vx6",
                         "subject":"Outbit Password Reset"
                     ]
@@ -126,7 +126,7 @@ class UserRoutes: RouteCollection {
             }
         }
         usersRoute.get("reset-password", ":token") { req async throws in
-            return try await req.view.render("PasswordReset", ["token": req.parameters.get("token") ?? "u_suck", "hostname":"check.paytondev.me"])
+            return try await req.view.render("PasswordReset", ["token": req.parameters.get("token") ?? "u_suck", "hostname":hostname])
         }
         usersRoute.post("pwresetrequest", ":token") { req async throws -> HTTPStatus in
             if let token = req.parameters.get("token"), let authorization = req.headers.basicAuthorization?.password {
