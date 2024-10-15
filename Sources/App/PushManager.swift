@@ -11,7 +11,7 @@ class PushManager {
     static func sendNotificationToUser(_ notification: FCMNotification, _ user: OBUserModel) async throws {
         if let token = user.apnsToken {
             let message = FCMMessage(token: token, notification: notification)
-             _ = app.fcm.send(message)
+            _ = app.fcm.send(message)
             print("sent notification to \(user.username)")
         } else {
             throw FCMError.noToken

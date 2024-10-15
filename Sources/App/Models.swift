@@ -175,8 +175,10 @@ final class CISessionModel: Model {
     
     @Field(key: "noProgressInstances")
     var noProgressInstances: Int
+    @Field(key: "placeName")
+    var placeName: String?
     init() {}
-    init(id: UUID? = nil, host: OBUserModel.IDValue, latitude: Float, longitude: Float, lastUpdate: Date? = nil, batteryLevel: Double, started: Date? = nil, destinationLat: Float, destinationLong: Float, family: CIFamilyModel.IDValue, radius: Double, distance: Double) {
+    init(id: UUID? = nil, host: OBUserModel.IDValue, latitude: Float, longitude: Float, lastUpdate: Date? = nil, batteryLevel: Double, started: Date? = nil, destinationLat: Float, destinationLong: Float, family: CIFamilyModel.IDValue, radius: Double, distance: Double, placeName: String?) {
         self.id = id
         self.$host.id = host
         self.latitude = latitude
@@ -190,12 +192,13 @@ final class CISessionModel: Model {
         self.radius = radius
         self.distance = distance
         self.noProgressInstances = 0
+        self.placeName = placeName
     }
     func toCISession(database: Database = app.db) async throws -> CISession {
         print("tocisession")
         var hostOBUser = try await $host.get(on: database).asOBUser(database: database)
         
-        return CISession(id: try requireID(), host: hostOBUser, latitude: latitude, longitude: longitude, destinationLat: destinationLat, destinationLong: destinationLong, lastUpdate: lastUpdate!, batteryLevel: batteryLevel, started: started!, radius: self.radius, distance: self.distance)
+        return CISession(id: try requireID(), host: hostOBUser, latitude: latitude, longitude: longitude, destinationLat: destinationLat, destinationLong: destinationLong, lastUpdate: lastUpdate!, batteryLevel: batteryLevel, started: started!, radius: self.radius, distance: self.distance, placeName: self.placeName)
     }
 }
 
@@ -215,6 +218,7 @@ struct CreateCISession: Migration {
             .field("radius", .double)
             .field("distance", .double)
             .field("noProgressInstances", .int)
+            .field("placeName", .string)
             .create()
     }
     func revert(on database: any Database) -> EventLoopFuture<Void> {
@@ -262,7 +266,8 @@ public struct CISession: Codable {
     var started: Date
     var radius: Double
     var distance: Double
-    init(id: UUID, host: OBUser, latitude: Float, longitude: Float, destinationLat: Float, destinationLong: Float, lastUpdate: Date, batteryLevel: Double, started: Date, radius: Double, distance: Double) {
+    var placeName: String?
+    init(id: UUID, host: OBUser, latitude: Float, longitude: Float, destinationLat: Float, destinationLong: Float, lastUpdate: Date, batteryLevel: Double, started: Date, radius: Double, distance: Double, placeName: String?) {
         self.id = id
         self.host = host
         self.latitude = latitude
@@ -274,6 +279,7 @@ public struct CISession: Codable {
         self.started = started
         self.radius = radius
         self.distance = distance
+        self.placeName = placeName
     }
 }
 

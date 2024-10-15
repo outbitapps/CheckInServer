@@ -143,15 +143,13 @@ class FamilyRoutes: RouteCollection {
                                 distance = origin.distance(to: destination)
                             }
                             print(routeResponse?.routes?.first?.distance)
-                            let sessionModel = CISessionModel(id: session.id, host: try user.requireID(), latitude: session.latitude, longitude: session.longitude, batteryLevel: session.batteryLevel, destinationLat: session.destinationLat, destinationLong: session.destinationLong, family: try family.requireID(), radius: session.radius, distance: routeResponse?.routes?.first?.distance ?? 0.0)
+                            let sessionModel = CISessionModel(id: session.id, host: try user.requireID(), latitude: session.latitude, longitude: session.longitude, batteryLevel: session.batteryLevel, destinationLat: session.destinationLat, destinationLong: session.destinationLong, family: try family.requireID(), radius: session.radius, distance: routeResponse?.routes?.first?.distance ?? 0.0, placeName: session.placeName)
 //                            try await sessionModel.create(on: req.db)
                             
                             try await family.$currentSession.create(sessionModel, on: req.db)
                             try await family.update(on: req.db)
                             let notification = FCMNotification(title: "\(user.username)'s Check In", body: "\(user.username) started a Check In in \(family.name)")
-                            for user in try await getUsers(family, db: req.db) {
-                                try? await PushManager.sendNotificationToUser(notification, user)
-                            }
+                            await sendNotificationToUsers(notification: notification, users: try await getUsers(family, db: req.db), exclude: try await sessionModel.$host.get(on: req.db))
                             print("Making session")
                             return HTTPStatus(statusCode: 200)
                         } else {
@@ -210,13 +208,7 @@ class FamilyRoutes: RouteCollection {
                             //end session
                             try await sessionModel.delete(on: req.db)
                             let notification = FCMNotification(title: "\(sessionModel.host.username)'s Check In", body: "\(sessionModel.host.username) has reached their destination. The Check In has ended.")
-                            for user in try await getUsers(family, db: req.db) {
-                                do {
-                                    try await PushManager.sendNotificationToUser(notification, user)
-                                } catch  {
-                                    print(error)
-                                }
-                            }
+                            await sendNotificationToUsers(notification: notification, users: try await getUsers(family, db: req.db), exclude: try await sessionModel.$host.get(on: req.db))
                             return HTTPStatus.ok
                         }
                         if (sessionModel.distance - session.distance <= 0) {
@@ -252,9 +244,7 @@ class FamilyRoutes: RouteCollection {
                 try await family.$currentSession.load(on: req.db)
                 if let sessionModel = family.currentSession, try await sessionModel.$host.get(on: req.db).id == user.id {
                     let notification = FCMNotification(title: "\(sessionModel.host.username)'s Check In", body: "\(sessionModel.host.username) has ended their Check In.")
-                    for user in try await getUsers(family, db: req.db) {
-                        try? await PushManager.sendNotificationToUser(notification, user)
-                    }
+                    await sendNotificationToUsers(notification: notification, users: try await getUsers(family, db: req.db), exclude: try await sessionModel.$host.get(on: req.db))
                     try await sessionModel.delete(on: req.db)
                     try await family.update(on: req.db)
                    
@@ -294,4 +284,18 @@ func getUsers(_ family: CIFamilyModel, db: Database = app.db) async throws -> [O
         }
     }
     return users
+}
+
+func sendNotificationToUsers(notification: FCMNotification, users: [OBUserModel], exclude: OBUserModel?) async {
+    for user in users {
+        var sendToUser = true
+        if let exclude {
+            if user.id == exclude.id {
+                sendToUser = false
+            }
+        }
+        if sendToUser {
+            try? await PushManager.sendNotificationToUser(notification, user)
+        }
+    }
 }
