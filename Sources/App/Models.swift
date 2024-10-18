@@ -136,6 +136,16 @@ class CreateFamilyModel: AsyncMigration {
     
 }
 
+struct CILatLong: Codable {
+    var latitude: Double
+    var longitude: Double
+}
+
+struct CISessionLocationHistory: Codable {
+    var location: CILatLong
+    var timestamp: Date
+}
+
 final class CISessionModel: Model {
     static let schema: String = "cisessions"
     
@@ -145,11 +155,8 @@ final class CISessionModel: Model {
     @Parent(key: "user")
     var host: OBUserModel
     
-    @Field(key: "last_lat")
-    var latitude: Float
-    
-    @Field(key: "last_long")
-    var longitude: Float
+    @Field(key: "current_location")
+    var location: CILatLong
     
     @Timestamp(key: "last_upd", on: .update)
     var lastUpdate: Date?
@@ -160,10 +167,8 @@ final class CISessionModel: Model {
     @Timestamp(key: "started", on: .create)
     var started: Date?
     
-    @Field(key: "dest_lat")
-    var destinationLat: Float
-    @Field(key: "dest_long")
-    var destinationLong: Float
+    @Field(key: "dest_location")
+    var destination: CILatLong
     
     @Parent(key: "family")
     var family: CIFamilyModel
@@ -177,54 +182,59 @@ final class CISessionModel: Model {
     var noProgressInstances: Int
     @Field(key: "placeName")
     var placeName: String?
+    
+    @Field(key: "history")
+    var history: [CISessionLocationHistory]
+    
     init() {}
-    init(id: UUID? = nil, host: OBUserModel.IDValue, latitude: Float, longitude: Float, lastUpdate: Date? = nil, batteryLevel: Double, started: Date? = nil, destinationLat: Float, destinationLong: Float, family: CIFamilyModel.IDValue, radius: Double, distance: Double, placeName: String?) {
+    init(id: UUID? = nil, host: OBUserModel.IDValue, location: CILatLong, lastUpdate: Date? = nil, batteryLevel: Double, started: Date? = nil, destination: CILatLong, family: CIFamilyModel.IDValue, radius: Double, distance: Double, placeName: String?, history: [CISessionLocationHistory]) {
         self.id = id
         self.$host.id = host
-        self.latitude = latitude
-        self.longitude = longitude
+        self.location = location
         self.lastUpdate = lastUpdate
         self.batteryLevel = batteryLevel
         self.started = started
-        self.destinationLat = destinationLat
-        self.destinationLong = destinationLong
+        self.destination = destination
         self.$family.id = family
         self.radius = radius
         self.distance = distance
         self.noProgressInstances = 0
         self.placeName = placeName
+        self.history = history
     }
     func toCISession(database: Database = app.db) async throws -> CISession {
         print("tocisession")
         var hostOBUser = try await $host.get(on: database).asOBUser(database: database)
         
-        return CISession(id: try requireID(), host: hostOBUser, latitude: latitude, longitude: longitude, destinationLat: destinationLat, destinationLong: destinationLong, lastUpdate: lastUpdate!, batteryLevel: batteryLevel, started: started!, radius: self.radius, distance: self.distance, placeName: self.placeName)
+        return CISession(id: try requireID(), host: hostOBUser, location: self.location, destination: self.destination, lastUpdate: lastUpdate!, batteryLevel: batteryLevel, started: started!, radius: self.radius, distance: self.distance, placeName: self.placeName, history: self.history)
     }
 }
+
 
 struct CreateCISession: Migration {
     func prepare(on database: any Database) -> EventLoopFuture<Void> {
         database.schema(CISessionModel.schema)
             .field("id", .uuid, .identifier(auto: true))
             .field("user", .uuid, .references("users", "id"))
-            .field("last_lat", .float)
-            .field("last_long", .float)
+            .field("current_location", .dictionary)
             .field("last_upd", .datetime)
             .field("battery", .double)
             .field("started", .datetime)
-            .field("dest_lat", .float)
-            .field("dest_long", .float)
+            .field("dest_location", .dictionary)
             .field("family", .uuid, .references("cifamilies", "id"))
             .field("radius", .double)
             .field("distance", .double)
             .field("noProgressInstances", .int)
             .field("placeName", .string)
+            .field("history", .array(of: .dictionary))
             .create()
     }
     func revert(on database: any Database) -> EventLoopFuture<Void> {
         database.schema(CISessionModel.schema).delete()
     }
 }
+
+
 
 public struct OBUser: Codable {
     var id: UUID
@@ -257,29 +267,27 @@ public struct CIFamily: Codable {
 public struct CISession: Codable {
     var id: UUID
     var host: OBUser
-    var latitude: Float
-    var longitude: Float
-    var destinationLat: Float
-    var destinationLong: Float
+    var location: CILatLong
+    var destination: CILatLong
     var lastUpdate: Date
     var batteryLevel: Double
     var started: Date
     var radius: Double
     var distance: Double
     var placeName: String?
-    init(id: UUID, host: OBUser, latitude: Float, longitude: Float, destinationLat: Float, destinationLong: Float, lastUpdate: Date, batteryLevel: Double, started: Date, radius: Double, distance: Double, placeName: String?) {
+    var history: [CISessionLocationHistory]
+    init(id: UUID, host: OBUser, location: CILatLong, destination: CILatLong, lastUpdate: Date, batteryLevel: Double, started: Date, radius: Double, distance: Double, placeName: String?, history: [CISessionLocationHistory]) {
         self.id = id
         self.host = host
-        self.latitude = latitude
-        self.longitude = longitude
-        self.destinationLat = destinationLat
-        self.destinationLong = destinationLong
+        self.location = location
+        self.destination = destination
         self.lastUpdate = lastUpdate
         self.batteryLevel = batteryLevel
         self.started = started
         self.radius = radius
         self.distance = distance
         self.placeName = placeName
+        self.history = history
     }
 }
 

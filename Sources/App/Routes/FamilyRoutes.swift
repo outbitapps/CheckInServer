@@ -117,12 +117,12 @@ class FamilyRoutes: RouteCollection {
                         if let body = req.body.data {
                             let session = try JSONDecoder().decode(CISession.self, from: body)
                             
-                            let origin = Turf.LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))
-                            let destination = Turf.LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong))
+                            let origin = Turf.LocationCoordinate2D(latitude: Double(session.location.latitude), longitude: Double(session.location.longitude))
+                            let destination = Turf.LocationCoordinate2D(latitude: Double(session.destination.latitude), longitude: Double(session.destination.longitude))
 //                            let distance = origin.distance(to: destination)
                             let waypoints = [
-                                Waypoint(coordinate: Turf.LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))),
-                                Waypoint(coordinate: Turf.LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong)))
+                                Waypoint(coordinate: Turf.LocationCoordinate2D(latitude: Double(session.location.latitude), longitude: Double(session.location.longitude))),
+                                Waypoint(coordinate: Turf.LocationCoordinate2D(latitude: Double(session.destination.latitude), longitude: Double(session.destination.longitude)))
                             ]
                             let options = RouteOptions(waypoints: waypoints, profileIdentifier: .automobile)
                             let routeResponse: RouteResponse? = await withCheckedContinuation { cont in
@@ -143,7 +143,7 @@ class FamilyRoutes: RouteCollection {
                                 distance = origin.distance(to: destination)
                             }
                             print(routeResponse?.routes?.first?.distance)
-                            let sessionModel = CISessionModel(id: session.id, host: try user.requireID(), latitude: session.latitude, longitude: session.longitude, batteryLevel: session.batteryLevel, destinationLat: session.destinationLat, destinationLong: session.destinationLong, family: try family.requireID(), radius: session.radius, distance: routeResponse?.routes?.first?.distance ?? 0.0, placeName: session.placeName)
+                            let sessionModel = CISessionModel(id: session.id, host: try user.requireID(), location: session.location, batteryLevel: session.batteryLevel, destination: session.destination, family: try family.requireID(), radius: session.radius, distance: routeResponse?.routes?.first?.distance ?? 0.0, placeName: session.placeName, history: [.init(location: session.location, timestamp: Date())])
 //                            try await sessionModel.create(on: req.db)
                             
                             try await family.$currentSession.create(sessionModel, on: req.db)
@@ -172,11 +172,11 @@ class FamilyRoutes: RouteCollection {
                 
                 if let sessionModel = try await family.$currentSession.get(on: req.db), try await sessionModel.$host.get(on: req.db).id == user.id {
                     if let body = req.body.data, let session = try? JSONDecoder().decode(CISession.self, from: body) {
-                        let origin = Turf.LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))
-                        let destination = Turf.LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong))
+                        let origin = Turf.LocationCoordinate2D(latitude: Double(session.location.latitude), longitude: Double(session.location.longitude))
+                        let destination = Turf.LocationCoordinate2D(latitude: Double(session.destination.latitude), longitude: Double(session.destination.longitude))
                         let waypoints = [
-                            Waypoint(coordinate: Turf.LocationCoordinate2D(latitude: Double(session.latitude), longitude: Double(session.longitude))),
-                            Waypoint(coordinate: Turf.LocationCoordinate2D(latitude: Double(session.destinationLat), longitude: Double(session.destinationLong)))
+                            Waypoint(coordinate: Turf.LocationCoordinate2D(latitude: Double(session.location.latitude), longitude: Double(session.location.longitude))),
+                            Waypoint(coordinate: Turf.LocationCoordinate2D(latitude: Double(session.destination.latitude), longitude: Double(session.destination.longitude)))
                         ]
                         let options = RouteOptions(waypoints: waypoints, profileIdentifier: .automobile)
                         let routeResponse: RouteResponse? = await withCheckedContinuation { cont in
@@ -198,11 +198,11 @@ class FamilyRoutes: RouteCollection {
                         }
 //                        let distance = origin.distance(to: destination)
                         sessionModel.batteryLevel = session.batteryLevel
-                        sessionModel.destinationLat = session.destinationLat
-                        sessionModel.destinationLong = session.destinationLong
-                        sessionModel.latitude = session.latitude
-                        sessionModel.longitude = session.longitude
-                        print(routeResponse?.routes?.first?.distance)
+                        sessionModel.destination = session.destination
+                        sessionModel.location = session.location
+                        sessionModel.history.append(.init(location: session.location, timestamp: Date()))
+                        
+                        print(sessionModel.history)
                         sessionModel.distance = distance
                         if (distance - sessionModel.radius <= 0) {
                             //end session
