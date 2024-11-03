@@ -182,7 +182,7 @@ class UserRoutes: RouteCollection {
             print("fetch users req")
             return try await req.auth.require(OBUserModel.self).asOBUser(database: req.db)
         }
-        tokenProtected.post("pushtoken", ":token") { req async throws -> HTTPStatus in
+        tokenProtected.post("pushtoken", ":token", ":platform") { req async throws -> HTTPStatus in
             let user = try req.auth.require(OBUserModel.self)
             user.apnsToken = req.parameters.get("token")
             try await user.update(on: req.db)
